@@ -7,12 +7,15 @@ evaluate with **exact matching** or an **LLM judge**. Evaluation support for SAQ
 
 ## Quick Start
 
-### 1) Install
+### 1) Create New Virtual Environment with Conda and Install package requirements
 
 ``` bash
 # Create a new conda env with Python 3.10
-conda create -n vlm_afri python=3.10 -y
-conda activate vlm_afri
+
+conda create -n afrimedqa_vlmeval python=3.10 -y
+conda activate afrimedqa_vlmeval
+
+# Install packages
 pip install -r requirements.txt
 # If converting HTML → TSV (e.g. using html_to_tsv.py), install the following packages:
 pip install beautifulsoup4 lxml
