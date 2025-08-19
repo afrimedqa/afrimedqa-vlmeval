@@ -10,6 +10,9 @@ evaluate with **exact matching** or an **LLM judge**. Evaluation support for SAQ
 ### 1) Install
 
 ``` bash
+# Create a new conda env with Python 3.10
+conda create -n vlm_afri python=3.10 -y
+conda activate vlm_afri
 pip install -r requirements.txt
 # If converting HTML → TSV (e.g. using html_to_tsv.py), install the following packages:
 pip install beautifulsoup4 lxml
