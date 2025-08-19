@@ -1,7 +1,7 @@
 # AfriMedQA with VLMEvalKit (Quick Start)
 
 The AfriMedQA dataset class extends VLMEvalKit's `ImageMCQDataset` to load a local TSV of questions and
-evaluate with **exact matching** or an **LLM judge**. Evaluation support for SAQ is yet to be determined. 
+evaluate with **exact matching** or an **LLM judge**. Evaluation support for SAQ is not included (yet to decide on appropriate evaluaiton metrics) 
 
 ------------------------------------------------------------------------
 
