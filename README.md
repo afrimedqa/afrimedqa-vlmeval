@@ -71,11 +71,11 @@ python run.py --data AfrimedQA --model Idefics3-8B-Llama3 --work-dir VLMEvalKit/
 ## About the `AfrimedQA` Class
 
 -   **Loads local TSV** from `$LMUData/AfrimedQA.tsv` 
--   **Ensures model predictions** are converted into one of the valid answer choices (A, B, C, D, or E)\
+-   **Ensures model predictions** are converted into one of the valid answer choices (A, B, C, D, or E)
 -   **Judging modes**
-    -   Exact matching (default)\
+    -   Exact matching (default)
     -   LLM judge if an OpenAI key is set
--   **Reports**  test and validation accuracy and writes results CSV file
+-   **Reports**  test and validation accuracy and writes results to CSV file
 
 ------------------------------------------------------------------------
 
