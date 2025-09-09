@@ -1,0 +1,5 @@
+lmudata/images/afrimedqa/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
