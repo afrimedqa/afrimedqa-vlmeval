@@ -36,17 +36,21 @@ class ImageBaseDataset:
     DATASET_URL = {}
     DATASET_MD5 = {}
 
-    def __init__(self, dataset='MMBench', skip_noimg=True):
+    def __init__(self, dataset='MMBench', skip_noimg=True, **kwargs):
         ROOT = LMUDataRoot()
         # You can override this variable to save image files to a different directory
         self.dataset_name = dataset
         self.img_root = osp.join(ROOT, 'images', img_root_map(dataset))
 
-        data = self.load_data(dataset)
+        #add kwargs to support extra dataset args
+        dataset_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+        data = self.load_data(dataset, **dataset_kwargs)
         self.skip_noimg = skip_noimg
         if skip_noimg and 'image' in data:
             data = data[~pd.isna(data['image'])]
-
+        if 'index' not in data.columns:
+            data['index'] = list(range(len(data)))
         data['index'] = [str(x) for x in data['index']]
 
         self.meta_only = True

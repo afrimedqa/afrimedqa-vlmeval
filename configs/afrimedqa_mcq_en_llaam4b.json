@@ -1,0 +1,13 @@
+{
+    "data": {
+        "class": "AfrimedQA",
+        "dataset": "AfrimedQA"
+    },
+    "model": {
+        "Idefics3-8B-Llama3": {
+            "class": "IDEFICS2"
+        }
+    },
+    "question_type": "MCQ",
+    "language": "en"
+}

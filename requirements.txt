@@ -37,3 +37,5 @@ transformers
 typing_extensions
 validators
 xlsxwriter
+beautifulsoup4
+lxml

@@ -1,0 +1,1 @@
+/fs/ess/PAS2836/owos/experiments/afrimedqa-vlmeval/results/Gemma3-12B/T20250909_Gd7cda0c6/Gemma3-12B_AfrimedQA_openai_result.pkl

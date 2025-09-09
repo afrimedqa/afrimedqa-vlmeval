@@ -20,10 +20,35 @@ class AfrimedQA(ImageMCQDataset):
 
     def load_data(self, dataset="AfriMedQA", **kwargs):
         # Expect a local TSV at <LMUDataRoot()>/<dataset>.tsv
-        data_path = osp.join(LMUDataRoot(), f"{dataset}.tsv")
+        lang = kwargs.get('lang', 'en')
+        question_type = kwargs.get('question_type', 'MCQ')
+
+        data_path = osp.join(LMUDataRoot(), f"{dataset}_{lang}.tsv")
         if not osp.exists(data_path):
             raise FileNotFoundError(f"Dataset file {data_path} does not exist.")
-        return load(data_path)
+
+        data = load(data_path)
+        if question_type == 'MCQ':
+            data = data[data['question_type'] == 'MCQ']
+        
+        #create an index column if not exists
+        if 'index' not in data.columns:
+            data.reset_index(inplace=True)
+
+        #fix image paths if img_path is provided
+        #rename image_path to absolute path of LMUDataRoot() + img_path + filename
+        img_path = kwargs.get('img_path', None)
+        if img_path is not None:
+            root_path = osp.join(LMUDataRoot(), img_path)
+            if 'image_path' in data.columns:
+                data['image_path'] = data['image_path'].apply(lambda x: osp.join(root_path, x.split('/')[-1]) if isinstance(x, str) else x)
+
+        #create text column if not exists
+        if 'text' not in data.columns and 'question' in data.columns:
+            data['text'] = data['question']
+
+
+        return data
 
     def evaluate(self, eval_file, **judge_kwargs):
         from .utils.multiple_choice import (

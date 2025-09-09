@@ -1366,13 +1366,17 @@ ursa_series = {
     "URSA-8B-PS-GRPO": partial(UrsaChat, model_path="URSA-MATH/URSA-8B-PS-GRPO")    
 }
 
+# add google/medgemma-27b-it google/medgemma-4b-it
+
 gemma_series = {
     "paligemma-3b-mix-448": partial(
         PaliGemma, model_path="google/paligemma-3b-mix-448"
     ),
     'Gemma3-4B': partial(Gemma3, model_path='google/gemma-3-4b-it'),
     'Gemma3-12B': partial(Gemma3, model_path='google/gemma-3-12b-it'),
-    'Gemma3-27B': partial(Gemma3, model_path='google/gemma-3-27b-it')
+    'Gemma3-27B': partial(Gemma3, model_path='google/gemma-3-27b-it'),
+    'MedGemma-4B': partial(Gemma3, model_path='google/medgemma-4b-it'),
+    'MedGemma-27B': partial(Gemma3, model_path='google/medgemma-27b-it'),
 }
 
 aguvis_series = {

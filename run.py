@@ -197,6 +197,12 @@ You can launch the evaluation by setting either --data and --model or --config.
     parser.add_argument('--reuse-aux', type=bool, default=True, help='reuse auxiliary evaluation files')
     parser.add_argument(
         '--use-vllm', action='store_true', help='use vllm to generate, the flag is only supported in Llama4 for now')
+    parser.add_argument(
+        "--lang", type=str, default="en", choices=["en", "twi"], help="language for dataset to valuate on")
+    parser.add_argument(
+        "--question-type", type=str, default="MCQ", choices=["MCQ", "open"], help="question type for dataset to valuate on")
+    parser.add_argument(
+        "--img_path", type=str, default=None, help="path to the image folder, only used in AfrimedQA dataset")
 
     args = parser.parse_args()
     return args
@@ -211,6 +217,7 @@ def main():
         use_config, cfg = True, load(args.config)
         args.model = list(cfg['model'].keys())
         args.data = list(cfg['data'].keys())
+        args.lang = cfg.get('language', 'en')
     else:
         assert len(args.data), '--data should be a list of data files'
 
@@ -248,7 +255,6 @@ def main():
             backend='nccl',
             timeout=datetime.timedelta(seconds=int(os.environ.get('DIST_TIMEOUT', 3600)))
         )
-
     for _, model_name in enumerate(args.model):
         model = None
         date, commit_id = timestr('day'), githash(digits=8)
@@ -280,12 +286,14 @@ def main():
                         if RANK == 0:
                             dataset = build_dataset_from_config(cfg['data'], dataset_name)
                         dist.barrier()
+
                     dataset = build_dataset_from_config(cfg['data'], dataset_name)
                     if dataset is None:
                         logger.error(f'Dataset {dataset_name} is not valid, will be skipped. ')
                         continue
                 else: # non config datasets
-                    dataset_kwargs = {}
+                    #convert args to dict and pass to dataset
+                    dataset_kwargs = vars(args)
                     if dataset_name in ['MMLongBench_DOC', 'DUDE', 'DUDE_MINI', 'SLIDEVQA', 'SLIDEVQA_MINI']:
                         dataset_kwargs['model'] = model_name
 
