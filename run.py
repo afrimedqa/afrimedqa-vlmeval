@@ -44,7 +44,7 @@ if LOCAL_WORLD_SIZE > 1 and len(GPU_LIST):
 
 from vlmeval.config import supported_VLM
 from vlmeval.dataset.video_dataset_config import supported_video_datasets
-from vlmeval.dataset import build_dataset
+from vlmeval.dataset import build_dataset,  DATASET_CLASSES
 from vlmeval.inference import infer_data_job
 from vlmeval.inference_video import infer_data_job_video
 from vlmeval.inference_mt import infer_data_job_mt
@@ -178,6 +178,8 @@ You can launch the evaluation by setting either --data and --model or --config.
     parser.add_argument('--config', type=str, help='Path to the Config Json File')
     # Work Dir
     parser.add_argument('--work-dir', type=str, default='./outputs', help='select the output directory')
+    parser.add_argument('--data-dir', type=str, default=None,
+                    help='Directory containing TSV files to evaluate (e.g., ./test_files)')
     # Infer + Eval or Infer Only
     parser.add_argument('--mode', type=str, default='all', choices=['all', 'infer'])
     # API Kwargs, Apply to API VLMs and Judge API LLMs
@@ -197,12 +199,6 @@ You can launch the evaluation by setting either --data and --model or --config.
     parser.add_argument('--reuse-aux', type=bool, default=True, help='reuse auxiliary evaluation files')
     parser.add_argument(
         '--use-vllm', action='store_true', help='use vllm to generate, the flag is only supported in Llama4 for now')
-    parser.add_argument(
-        "--lang", type=str, default="en", choices=["en", "twi"], help="language for dataset to valuate on")
-    parser.add_argument(
-        "--question-type", type=str, default="MCQ", choices=["MCQ", "open"], help="question type for dataset to valuate on")
-    parser.add_argument(
-        "--img_path", type=str, default=None, help="path to the image folder, only used in AfrimedQA dataset")
 
     args = parser.parse_args()
     return args
@@ -212,12 +208,55 @@ def main():
     logger = get_logger('RUN')
     args = parse_args()
     use_config, cfg = False, None
+
+    # if --data-dir is set, dynamically register all tsv files in the directory as AfrimedQA test datasets
+    discovered_names = []
+    if args.data_dir is not None:
+        tsv_dir = args.data_dir
+        tsv_files = [f for f in os.listdir(tsv_dir) if f.endswith('.tsv')]
+        if not tsv_files:
+            raise FileNotFoundError(f"No TSV files found in directory: {tsv_dir}")
+    
+        args.data = []
+        for f in tsv_files:
+            dataset_name = os.path.splitext(f)[0]  # e.g., "YORUBA_TEST_Sheet1"
+            dataset_path = os.path.abspath(os.path.join(tsv_dir, f))
+        
+            # Dynamically register this dataset with AfrimedQA
+            from vlmeval.dataset.afrimedqa import AfrimedQA
+            AfrimedQA.DATASET_URL[dataset_name] = dataset_path
+            AfrimedQA.DATASET_MD5[dataset_name] = ""
+        
+            args.data.append(dataset_name)
+            discovered_names.append(dataset_name)
+    
+        print(f"Found {len(args.data)} datasets in {tsv_dir}:")
+        for d in args.data:
+            print(f"  - {d}")
+
+        from vlmeval.dataset.afrimedqa import AfrimedQA
+        if AfrimedQA not in DATASET_CLASSES:
+            # Put first so it wins lookup before generic fallbacks
+            DATASET_CLASSES.insert(0, AfrimedQA)
+
+        # Teach AfrimedQA to report these names as supported
+        if not hasattr(AfrimedQA, "_extra_datasets"):
+            AfrimedQA._extra_datasets = set()
+        AfrimedQA._extra_datasets.update(discovered_names)
+
+        
+        def _supported_datasets(cls):
+            base = ['AfrimedQA']
+            extra = sorted(list(getattr(cls, "_extra_datasets", [])))
+            return base + extra
+
+        AfrimedQA.supported_datasets = classmethod(_supported_datasets)
+
     if args.config is not None:
         assert args.data is None and args.model is None, '--data and --model should not be set when using --config'
         use_config, cfg = True, load(args.config)
         args.model = list(cfg['model'].keys())
         args.data = list(cfg['data'].keys())
-        args.lang = cfg.get('language', 'en')
     else:
         assert len(args.data), '--data should be a list of data files'
 
@@ -255,6 +294,7 @@ def main():
             backend='nccl',
             timeout=datetime.timedelta(seconds=int(os.environ.get('DIST_TIMEOUT', 3600)))
         )
+
     for _, model_name in enumerate(args.model):
         model = None
         date, commit_id = timestr('day'), githash(digits=8)
@@ -286,14 +326,12 @@ def main():
                         if RANK == 0:
                             dataset = build_dataset_from_config(cfg['data'], dataset_name)
                         dist.barrier()
-
                     dataset = build_dataset_from_config(cfg['data'], dataset_name)
                     if dataset is None:
                         logger.error(f'Dataset {dataset_name} is not valid, will be skipped. ')
                         continue
                 else: # non config datasets
-                    #convert args to dict and pass to dataset
-                    dataset_kwargs = vars(args)
+                    dataset_kwargs = {}
                     if dataset_name in ['MMLongBench_DOC', 'DUDE', 'DUDE_MINI', 'SLIDEVQA', 'SLIDEVQA_MINI']:
                         dataset_kwargs['model'] = model_name
 
