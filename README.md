@@ -71,7 +71,6 @@ This is where the test_files should be stored.
 mkdir test_files
 ```
 
-> **Note:** VLMEvalKit uses `LMUDataRoot()` to locate datasets. By setting `LMUData`, you tell it where to look.
 
 ### 4) Model Selection
 
