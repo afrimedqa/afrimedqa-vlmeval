@@ -207,6 +207,15 @@ You can launch the evaluation by setting either --data and --model or --config.
 def main():
     logger = get_logger('RUN')
     args = parse_args()
+    
+    if 'LMUData' not in os.environ:
+        if args.data_dir:
+            os.environ['LMUData'] = os.path.abspath(args.data_dir)
+        else:
+            os.environ['LMUData'] = os.getcwd()
+        if RANK == 0:
+            logger.info(f"LMUData env var not set. Automatically set to: {os.environ['LMUData']}")
+    
     use_config, cfg = False, None
 
     # if --data-dir is set, dynamically register all tsv files in the directory as AfrimedQA test datasets
