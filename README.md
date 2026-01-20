@@ -85,21 +85,17 @@ Please see `vlmeval/config.py` for all the available open source models you can 
 
 ``` bash
 bash scripts/run.sh
+python run.py --model Gemma3-12B --data-dir test_files
 ```
 
 **Script parameters:**
-- `--data AfrimedQA` → selects the benchmark
-- `--lang` → indicates the language you are working with (we use "en" for English in this example)
-- `--question_type` → the question type: MCQ or SAQ
-- `--img_path` → the path where you saved the images
-- `--model Idefics3-8B-Llama3` → chooses the LVLM
-- `--work-dir` → directory where logs/results are saved
+- `--model Idefics3-8B-Llama3` → The name of the LVLM to evaluate (e.g., Gemma3-12B, Idefics3-8B-Llama3)
+- `--data-dir` → The directory containing your .tsv files. The script will automatically discover and register every TSV in this folder as a dataset
 
 ### 6) Outputs
-
-- Per-question predictions and hits
-- Accuracy summary CSV: `_acc_all.csv`
-- Full per-item results: `_full_data.csv`
+- Per-question predictions and hits are saved in ./outputs/{Model_Name}/{Run_ID}/
+- Accuracy summary CSV: _acc_all.csv
+- Full per-item results: _full_data.csv
 
 ------------------------------------------------------------------------
 
