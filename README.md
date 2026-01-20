@@ -63,12 +63,12 @@ gdown 1NotzG0VfRdQSZS2kd64Lq****
 ```
 
 
-### 3) Set up LMUData Directory
+### 3) Set up test_files Directory
 
-Export the dataset path and copy the TSV into place:
+This is where the test_files should be stored.
 
 ``` bash
-export LMUData=/path/to/LMUData
+mkdir test_files
 ```
 
 > **Note:** VLMEvalKit uses `LMUDataRoot()` to locate datasets. By setting `LMUData`, you tell it where to look.
