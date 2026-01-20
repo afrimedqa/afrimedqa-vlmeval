@@ -69,10 +69,6 @@ Export the dataset path and copy the TSV into place:
 
 ``` bash
 export LMUData=/path/to/LMUData
-lang=en
-question_type=MCQ
-model=Gemma3-12B
-img_path=images/afrimedqa
 ```
 
 > **Note:** VLMEvalKit uses `LMUDataRoot()` to locate datasets. By setting `LMUData`, you tell it where to look.
