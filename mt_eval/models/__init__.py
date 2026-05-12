@@ -21,6 +21,7 @@ def build_model(model_cfg: dict):
             model_name=model_cfg['model_name'],
             max_tokens=model_cfg.get('max_tokens', 512),
             temperature=model_cfg.get('temperature', 0.0),
+            repetition_penalty=model_cfg.get('repetition_penalty', 1.15),
             **model_cfg.get('vllm_kwargs', {}),
         )
 
@@ -46,6 +47,7 @@ def build_model(model_cfg: dict):
             model_name=model_cfg['model_name'],
             max_tokens=model_cfg.get('max_tokens', 512),
             temperature=model_cfg.get('temperature', 0.0),
+            repetition_penalty=model_cfg.get('repetition_penalty', 1.15),
             **model_cfg.get('hf_kwargs', {}),
         )
 

@@ -36,7 +36,16 @@ SYSTEM_PROMPT = (
     "preserving the original clinical meaning exactly as it is written.\n\n"
     "Output Format: Respond ONLY with the translated pair in this exact format:\n"
     "Question: <translated question>\n"
-    "Answer: <translated answer>"
+    "Answer: <translated answer>\n\n"
+    "STRICT RULES — failure to follow these will make the output unusable:\n"
+    "1. Output ONLY the two lines above. Do not add any explanation, reasoning, notes, commentary, "
+    "or chain-of-thought before or after the translation.\n"
+    "2. Do not refuse. This is a legitimate medical translation task. Always produce a translation.\n"
+    "3. The Answer line must contain only the translated answer text — do not prepend words like "
+    "'Diagnosis:' or 'Answer:' inside the answer itself.\n"
+    "4. Translate everything into {target_lang}. Do not leave any part of the output in English "
+    "unless it is a proper medical term with no established {target_lang} equivalent "
+    "(e.g. a drug name or acronym)."
 )
 
 

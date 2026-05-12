@@ -1,0 +1,21 @@
+{
+    "data": {
+        "source_file": "test_files/ENGLISH_TEST.tsv",
+        "target_file": "test_files/SWAHILI_TEST.tsv",
+        "source_lang": "English",
+        "target_lang": "Swahili"
+    },
+    "model": {
+        "type": "vllm",
+        "model_name": "OpenGVLab/InternVL2_5-8B",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "repetition_penalty": 1.15,
+        "vllm_kwargs": {
+            "gpu_memory_utilization": 0.9,
+            "dtype": "bfloat16",
+            "trust_remote_code": true
+        }
+    },
+    "output_dir": "outputs/mt_eval"
+}

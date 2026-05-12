@@ -14,6 +14,7 @@ class HFModel(BaseMTModel):
         model_name: str,
         max_tokens: int = 512,
         temperature: float = 0.0,
+        repetition_penalty: float = 1.15,
         device_map: str = "auto",
         torch_dtype: str = "bfloat16",
         **model_kwargs,
@@ -32,6 +33,7 @@ class HFModel(BaseMTModel):
         self.model.eval()
         self.max_tokens = max_tokens
         self.temperature = temperature
+        self.repetition_penalty = repetition_penalty
 
     def translate(self, messages: list[dict]) -> str:
         import torch
@@ -47,6 +49,7 @@ class HFModel(BaseMTModel):
         gen_kwargs = dict(
             max_new_tokens=self.max_tokens,
             do_sample=do_sample,
+            repetition_penalty=self.repetition_penalty,
         )
         if do_sample:
             gen_kwargs["temperature"] = self.temperature
