@@ -6,11 +6,13 @@ Usage (from project root):
 """
 
 import argparse
+import gc
 import json
 import re
 from pathlib import Path
 
 import pandas as pd
+import torch
 
 from mt_eval.datasets import load_parallel_corpus
 from mt_eval.metrics import score_chrf, score_chrf_corpus, score_ssa_comet
@@ -129,6 +131,11 @@ def run(config_path: str):
               f"A={results[-1]['chrf_answer']:.1f}")
 
     df = pd.DataFrame(results)
+
+    # Free vLLM GPU memory before loading COMET
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
 
     # SSA-COMET (batch, uses src English as source)
     print("\nRunning SSA-COMET scoring...")
