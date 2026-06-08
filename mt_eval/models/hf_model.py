@@ -20,16 +20,25 @@ class HFModel(BaseMTModel):
         **model_kwargs,
     ):
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer
 
         dtype = getattr(torch, torch_dtype)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map=device_map,
-            torch_dtype=dtype,
-            **model_kwargs,
-        )
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map=device_map,
+                torch_dtype=dtype,
+                **model_kwargs,
+            )
+        except (ValueError, OSError):
+            # VLMs (e.g. Qwen3-VL) register under AutoModelForImageTextToText
+            self.model = AutoModelForImageTextToText.from_pretrained(
+                model_name,
+                device_map=device_map,
+                torch_dtype=dtype,
+                **model_kwargs,
+            )
         self.model.eval()
         self.max_tokens = max_tokens
         self.temperature = temperature

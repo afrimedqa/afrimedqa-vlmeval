@@ -1270,6 +1270,37 @@ qwen2vl_series = {
     ),
 }
 
+qwen3vl_series = {
+    "Qwen3-VL-7B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-7B-Instruct",
+        min_pixels=1280 * 28 * 28,
+        max_pixels=16384 * 28 * 28,
+        use_custom_prompt=False,
+    ),
+    "Qwen3-VL-30B-A3B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        min_pixels=1280 * 28 * 28,
+        max_pixels=16384 * 28 * 28,
+        use_custom_prompt=False,
+    ),
+    "Qwen3-VL-32B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-32B-Instruct",
+        min_pixels=1280 * 28 * 28,
+        max_pixels=16384 * 28 * 28,
+        use_custom_prompt=False,
+    ),
+    "Qwen3-VL-72B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-72B-Instruct",
+        min_pixels=1280 * 28 * 28,
+        max_pixels=16384 * 28 * 28,
+        use_custom_prompt=False,
+    ),
+}
+
 slime_series = {
     "Slime-7B": partial(SliME, model_path="yifanzhang114/SliME-vicuna-7B"),
     "Slime-8B": partial(SliME, model_path="yifanzhang114/SliME-Llama3-8B"),
@@ -1419,7 +1450,7 @@ model_groups = [
     idefics_series, instructblip_series, deepseekvl_series, deepseekvl2_series, 
     janus_series, minicpm_series, cogvlm_series, wemm_series, cambrian_series, 
     chameleon_series, video_models, ovis_series, vila_series, mantis_series,
-    mmalaya_series, phi3_series, phi4_series, xgen_mm_series, qwen2vl_series,
+    mmalaya_series, phi3_series, phi4_series, xgen_mm_series, qwen2vl_series, qwen3vl_series,
     slime_series, eagle_series, moondream_series, llama_series, molmo_series,
     kosmos_series, points_series, nvlm_series, vintern_series, h2ovl_series,
     aria_series, smolvlm_series, sail_series, valley_series, vita_series,

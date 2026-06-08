@@ -1,0 +1,15 @@
+{
+    "model": {
+        "InternVL2_5-8B": {
+            "class": "InternVLChat",
+            "model_path": "OpenGVLab/InternVL2_5-8B",
+            "version": "V2.0"
+        }
+    },
+    "data": {
+        "IGBO_TEST__Sheet1_TextOnly": {
+            "class": "AfrimedTextQA",
+            "dataset": "IGBO_TEST__Sheet1_TextOnly"
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "data": {
+        "source_file": "full_splits/ENGLISH_FULL.tsv",
+        "target_file": "full_splits/PORTUGUESE_FULL.tsv",
+        "source_lang": "English",
+        "target_lang": "Portuguese"
+    },
+    "model": {
+        "type": "gemini",
+        "model_name": "gemini-3.1-flash-lite",
+        "api_key": "GEMINI_API_KEY",
+        "max_tokens": 4096,
+        "temperature": 0.0
+    },
+    "output_dir": "outputs/mt_eval/Gemini-3.1-Flash-Lite/full_splits_v2"
+}

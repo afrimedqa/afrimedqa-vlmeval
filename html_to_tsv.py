@@ -44,15 +44,26 @@ def find_question_col(headers: list):
     return None
 
 
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+
+
 def build_image_map(*zip_files: zipfile.ZipFile) -> dict:
     """Return a dict mapping lowercase filename -> b64 string from one or more zips."""
-    IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
     image_map = {}
     for zf in zip_files:
         for name in zf.namelist():
             p = Path(name)
             if p.suffix.lower() in IMAGE_EXTS:
                 image_map[p.name.lower()] = encode_b64(zf.read(name))
+    return image_map
+
+
+def build_image_map_from_dir(images_dir: Path) -> dict:
+    """Return a dict mapping lowercase filename -> b64 string from a directory."""
+    image_map = {}
+    for p in images_dir.iterdir():
+        if p.suffix.lower() in IMAGE_EXTS:
+            image_map[p.name.lower()] = encode_b64(p.read_bytes())
     return image_map
 
 
@@ -161,7 +172,15 @@ def write_tsv(rows, out_path: Path):
         writer.writerows(rows)
 
 
-def process_zip(zip_path: Path, out_path: Path = None, images_zip_path: Path = None):
+def read_tsv(tsv_path: Path) -> list:
+    csv.field_size_limit(10 * 1024 * 1024)  # 10 MB — handles large base64 image fields
+    with tsv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        return [dict(row) for row in reader]
+
+
+def process_zip(zip_path: Path, out_path: Path = None, images_zip_path: Path = None,
+                images_dir: Path = None):
     zip_name = zip_path.name
     language = zip_name.split("_")[0]
 
@@ -180,6 +199,8 @@ def process_zip(zip_path: Path, out_path: Path = None, images_zip_path: Path = N
         images_zf = zipfile.ZipFile(images_zip_path, "r") if images_zip_path else None
         try:
             img_map = build_image_map(zf, *([images_zf] if images_zf else []))
+            if images_dir and images_dir.is_dir():
+                img_map.update(build_image_map_from_dir(images_dir))
             print(f"Loaded {len(img_map)} images")
 
             for html_name in html_files:
@@ -202,18 +223,95 @@ def process_zip(zip_path: Path, out_path: Path = None, images_zip_path: Path = N
     return out_path
 
 
+def _sample_id_key(row: dict) -> int:
+    try:
+        return int(row.get("sample_id", 0))
+    except (ValueError, TypeError):
+        return 0
+
+
+def process_all_batch(train_dir: Path, test_dir: Path, combined_dir: Path,
+                      images_zip_path: Path = None, images_dir: Path = None):
+    """Process all train zips, write train TSVs, then write combined FULL TSVs."""
+    combined_dir.mkdir(parents=True, exist_ok=True)
+
+    train_zips = sorted(train_dir.glob("*_TRAIN.xlsx.zip"))
+    if not train_zips:
+        raise FileNotFoundError(f"No *_TRAIN.xlsx.zip files found in {train_dir}")
+
+    for train_zip in train_zips:
+        language = train_zip.name.split("_")[0]
+        print(f"\n=== {language} ===")
+
+        train_tsv = train_dir / f"{language}_TRAIN.tsv"
+        process_zip(train_zip, train_tsv, images_zip_path=images_zip_path,
+                    images_dir=images_dir)
+
+        test_tsv = test_dir / f"{language}_TEST.tsv"
+        if not test_tsv.exists():
+            print(f"Warning: {test_tsv} not found — skipping combined file for {language}")
+            continue
+
+        train_rows = read_tsv(train_tsv)
+        test_rows = read_tsv(test_tsv)
+        combined = sorted(train_rows + test_rows, key=_sample_id_key)
+        for i, row in enumerate(combined, 1):
+            row["index"] = i
+
+        combined_tsv = combined_dir / f"{language}_FULL.tsv"
+        write_tsv(combined, combined_tsv)
+        print(f"Combined {len(train_rows)} train + {len(test_rows)} test = "
+              f"{len(combined)} rows → {combined_tsv.resolve()}")
+
+
 def main():
     p = argparse.ArgumentParser(
         description="Convert AfriMedQA zip (xlsx HTML export) to TSV for VLM evaluation."
     )
-    p.add_argument("zip", type=Path, help="Path to the .zip file (e.g. TWI_TEST.xlsx.zip)")
-    p.add_argument("--out", type=Path, default=None,
-                   help="Output TSV path (default: <stem>.tsv next to zip)")
-    p.add_argument("--images", type=Path, default=None, metavar="IMAGES_ZIP",
-                   help="Separate zip file containing image files")
+    sub = p.add_subparsers(dest="cmd")
+
+    # --- single-file mode (original behaviour) ---
+    sp = sub.add_parser("convert", help="Convert a single zip to TSV (default mode)")
+    sp.add_argument("zip", type=Path, help="Path to the .zip file (e.g. TWI_TEST.xlsx.zip)")
+    sp.add_argument("--out", type=Path, default=None,
+                    help="Output TSV path (default: <stem>.tsv next to zip)")
+    sp.add_argument("--images", type=Path, default=None, metavar="IMAGES_ZIP",
+                    help="Separate zip file containing image files")
+
+    # --- batch mode (all languages) ---
+    bp = sub.add_parser("batch", help="Process all train zips and generate combined FULL TSVs")
+    bp.add_argument("--train-dir", type=Path, default=Path("train_files"),
+                    help="Directory containing *_TRAIN.xlsx.zip files (default: train_files)")
+    bp.add_argument("--test-dir", type=Path, default=Path("test_files"),
+                    help="Directory containing *_TEST.tsv files (default: test_files)")
+    bp.add_argument("--combined-dir", type=Path, default=Path("full_splits"),
+                    help="Output directory for *_FULL.tsv files (default: full_splits)")
+    bp.add_argument("--images-dir", type=Path, default=None, metavar="IMAGES_DIR",
+                    help="Directory of image files to embed (default: Images/ if it exists)")
+    bp.add_argument("--images", type=Path, default=None, metavar="IMAGES_ZIP",
+                    help="Zip file of images to embed (alternative to --images-dir)")
+
     args = p.parse_args()
 
-    process_zip(args.zip, args.out, images_zip_path=args.images)
+    if args.cmd == "batch":
+        # Auto-detect Images/ directory at project root if neither flag given
+        images_dir = args.images_dir
+        if images_dir is None and args.images is None and Path("Images").is_dir():
+            images_dir = Path("Images")
+            print(f"Auto-detected images directory: {images_dir.resolve()}")
+        process_all_batch(args.train_dir, args.test_dir, args.combined_dir,
+                          images_zip_path=args.images, images_dir=images_dir)
+    elif args.cmd == "convert":
+        process_zip(args.zip, args.out, images_zip_path=args.images)
+    else:
+        # Backwards-compatible: if first arg looks like a path, treat as single convert
+        import sys
+        if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+            zip_path = Path(sys.argv[1])
+            out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+            process_zip(zip_path, out_path)
+        else:
+            p.print_help()
 
 
 if __name__ == "__main__":

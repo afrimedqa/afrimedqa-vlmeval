@@ -1,8 +1,15 @@
+import os
+
 from .chat_model import ChatModel
 from .gemini_model import GeminiModel
 from .hf_model import HFModel
 from .seq2seq_model import Seq2SeqModel
 from .vllm_model import VLLMModel
+
+
+def _resolve_api_key(value: str) -> str:
+    """If value names an env var, return its value; otherwise return it as-is."""
+    return os.environ.get(value, value)
 
 
 def build_model(model_cfg: dict):
@@ -28,7 +35,7 @@ def build_model(model_cfg: dict):
     if model_type == 'openai':
         return ChatModel(
             model_name=model_cfg['model_name'],
-            api_key=model_cfg['api_key'],
+            api_key=_resolve_api_key(model_cfg['api_key']),
             base_url=model_cfg.get('base_url', None),
             max_tokens=model_cfg.get('max_tokens', 512),
             temperature=model_cfg.get('temperature', 0.0),
@@ -37,7 +44,7 @@ def build_model(model_cfg: dict):
     if model_type == 'gemini':
         return GeminiModel(
             model_name=model_cfg['model_name'],
-            api_key=model_cfg['api_key'],
+            api_key=_resolve_api_key(model_cfg['api_key']),
             max_tokens=model_cfg.get('max_tokens', 512),
             temperature=model_cfg.get('temperature', 0.0),
         )

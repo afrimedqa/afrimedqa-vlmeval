@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import time
+
 from google import genai
 from google.genai import types
 
 from .base import BaseMTModel
+
+_MAX_RETRIES = 3
+_RETRY_DELAY = 5  # seconds
 
 
 class GeminiModel(BaseMTModel):
@@ -39,9 +44,15 @@ class GeminiModel(BaseMTModel):
             temperature=self.temperature,
         )
 
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            contents=user_msg,
-            config=config,
-        )
-        return response.text
+        for attempt in range(1, _MAX_RETRIES + 1):
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=user_msg,
+                config=config,
+            )
+            if response.text is not None:
+                return response.text
+            if attempt < _MAX_RETRIES:
+                time.sleep(_RETRY_DELAY)
+
+        return ""

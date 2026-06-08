@@ -1,0 +1,14 @@
+{
+    "model": {
+        "Molmo-7B-D-0924": {
+            "class": "molmo",
+            "model_path": "allenai/Molmo2-O-7B"
+        }
+    },
+    "data": {
+        "IGBO_TEST__Sheet1_TextOnly": {
+            "class": "AfrimedTextQA",
+            "dataset": "IGBO_TEST__Sheet1_TextOnly"
+        }
+    }
+}

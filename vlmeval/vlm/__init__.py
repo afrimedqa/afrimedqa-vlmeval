@@ -33,6 +33,7 @@ from .open_flamingo import OpenFlamingo
 from .pandagpt import PandaGPT
 from .qwen_vl import QwenVL, QwenVLChat
 from .qwen2_vl import Qwen2VLChat, Qwen2VLChatAguvis
+from .qwen3_vl import Qwen3VLChat
 from .transcore_m import TransCoreM
 from .visualglm import VisualGLM
 from .xcomposer import (
@@ -50,7 +51,7 @@ from .janus import Janus
 from .mgm import Mini_Gemini
 from .bunnyllama3 import BunnyLLama3
 from .vxverse import VXVERSE
-from .gemma import PaliGemma, Gemma3
+from .gemma import PaliGemma, Gemma3, Gemma4
 from .qh_360vl import QH_360VL
 from .phi3_vision import Phi3Vision, Phi3_5Vision
 from .phi4_multimodal import Phi4Multimodal

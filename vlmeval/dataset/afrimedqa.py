@@ -40,20 +40,21 @@ class AfrimedQA(ImageMCQDataset):
     
 
     def build_prompt(self, line):
-        # Get the default framework prompt 
+        # Get the default framework prompt
         msgs = super().build_prompt(line)
-        
-        # Define the MCQ-specific prompt constraint
+
         cot_clinical_constraints = (
-            "\n\nAnswer with only a single letter corresponding to the correct option: A, B, C, or D."
+            "\n\nIn 1-2 sentences, briefly explain your clinical reasoning. "
+            "Then state your final answer on a new line in this exact format:\n"
+            "Answer: <letter>\n"
+            "where <letter> is exactly one of A, B, C, or D. Do not add anything after the answer line."
         )
-        
-        # append it to the  payload
+
         for msg in msgs:
             if msg['type'] == 'text':
                 msg['value'] += cot_clinical_constraints
-                break 
-                
+                break
+
         return msgs
 
     def evaluate(self, eval_file, **judge_kwargs):
@@ -112,19 +113,30 @@ class AfrimedQA(ImageMCQDataset):
         if 'index' not in data.columns:
             data.reset_index(inplace=True)
 
-        def extract_choice(text):
-            
+        def extract_rationale(text: str) -> str:
             text = str(text).strip()
-            
-            
+            # Find where the answer line starts and take everything before it as the rationale
+            m = re.search(r'(?i)(final\s+answer|answer)\s*:\s*[A-E]', text)
+            if m:
+                rationale = text[:m.start()].strip()
+                # Strip an optional leading "Rationale:" label the model may add
+                rationale = re.sub(r'^(?i)rationale\s*:\s*', '', rationale).strip()
+                return rationale
+            return ""
+
+        def extract_choice(text):
+
+            text = str(text).strip()
+
+
             match = re.search(r'FINAL ANSWER:\s*\*?\*?([A-E])', text, re.IGNORECASE)
             if match: return match.group(1).upper()
 
-           
+
             match = re.search(r'\*\*(A|B|C|D|E)(?:\.|\*\*)', text)
             if match: return match.group(1)
-            
-   
+
+
             match = re.search(r'answer is:?\s*(A|B|C|D|E)', text, re.IGNORECASE)
             if match: return match.group(1).upper()
 
@@ -134,11 +146,11 @@ class AfrimedQA(ImageMCQDataset):
 
             match = re.search(r'\b(A|B|C|D|E)\.', text)
             if match: return match.group(1)
-            
-            
+
+
             if text.upper() in ['A', 'B', 'C', 'D', 'E']:
                 return text.upper()
-                
+
             match = re.match(r'^([A-E])\b', text, re.IGNORECASE)
             if match: return match.group(1).upper()
 
@@ -148,6 +160,8 @@ class AfrimedQA(ImageMCQDataset):
 
             return "INVALID"
 
+        # Extract rationale before overwriting prediction with the letter
+        data['answer_rationale'] = data['prediction'].apply(extract_rationale)
 
         # Apply our custom regex to clean the predictions
         data['prediction'] = data['prediction'].apply(extract_choice)

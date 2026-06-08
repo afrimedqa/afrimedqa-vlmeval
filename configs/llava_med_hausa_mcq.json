@@ -1,0 +1,14 @@
+{
+    "model": {
+        "llava-med-v1.5-mistral-7b": {
+            "class": "LLaVA_Med",
+            "model_path": "microsoft/llava-med-v1.5-mistral-7b"
+        }
+    },
+    "data": {
+        "HAUSA_TEST__Sheet1": {
+            "class": "AfrimedQA",
+            "dataset": "HAUSA_TEST__Sheet1"
+        }
+    }
+}

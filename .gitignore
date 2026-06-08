@@ -5,3 +5,14 @@ __pycache__/
 *.egg-info/
 .claude
 .deepeval
+slurm/
+logs/
+.env
+Images/
+full_splits/
+outputs/
+run_vllm.log
+temp/
+test_files/
+train_files/
+vllm_debug.log

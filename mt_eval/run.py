@@ -64,6 +64,13 @@ def parse_output(text: str) -> tuple[str, str]:
     a_match = re.search(r'(?i)Answer:\s*(.+?)$', text, re.DOTALL)
     hyp_q = q_match.group(1).strip() if q_match else ""
     hyp_a = a_match.group(1).strip() if a_match else ""
+
+    # Fallback: if labels are missing but output has two non-empty lines, use line split
+    if not hyp_q and not hyp_a:
+        lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+        if len(lines) >= 2:
+            hyp_q, hyp_a = lines[0], lines[-1]
+
     return hyp_q, hyp_a
 
 
