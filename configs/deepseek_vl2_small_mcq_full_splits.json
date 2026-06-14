@@ -1,0 +1,24 @@
+{
+    "model": {
+        "deepseek-vl2-small": {
+            "class": "DeepSeekVL2",
+            "model_path": "deepseek-ai/deepseek-vl2-small"
+        }
+    },
+    "data": {
+        "AMHARIC_FULL":    { "class": "AfrimedQA", "dataset": "AMHARIC_FULL" },
+        "ARABIC_FULL":     { "class": "AfrimedQA", "dataset": "ARABIC_FULL" },
+        "ENGLISH_FULL":    { "class": "AfrimedQA", "dataset": "ENGLISH_FULL" },
+        "FRENCH_FULL":     { "class": "AfrimedQA", "dataset": "FRENCH_FULL" },
+        "HAUSA_FULL":      { "class": "AfrimedQA", "dataset": "HAUSA_FULL" },
+        "IGBO_FULL":       { "class": "AfrimedQA", "dataset": "IGBO_FULL" },
+        "ISIZULU_FULL":    { "class": "AfrimedQA", "dataset": "ISIZULU_FULL" },
+        "PORTUGUESE_FULL": { "class": "AfrimedQA", "dataset": "PORTUGUESE_FULL" },
+        "SESOTHO_FULL":    { "class": "AfrimedQA", "dataset": "SESOTHO_FULL" },
+        "SWAHILI_FULL":    { "class": "AfrimedQA", "dataset": "SWAHILI_FULL" },
+        "TWI_FULL":        { "class": "AfrimedQA", "dataset": "TWI_FULL" },
+        "WOLLOF_FULL":     { "class": "AfrimedQA", "dataset": "WOLLOF_FULL" },
+        "XHOSA_FULL":      { "class": "AfrimedQA", "dataset": "XHOSA_FULL" },
+        "YORUBA_FULL":     { "class": "AfrimedQA", "dataset": "YORUBA_FULL" }
+    }
+}

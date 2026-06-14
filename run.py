@@ -252,7 +252,7 @@ def main():
         date, commit_id = timestr('day'), githash(digits=8)
         eval_id = f"T{date}_G{commit_id}"
 
-        pred_root = osp.join(args.work_dir, model_name, eval_id)
+        pred_root_base = osp.join(args.work_dir, model_name, eval_id)
         pred_root_meta = osp.join(args.work_dir, model_name)
         os.makedirs(pred_root_meta, exist_ok=True)
 
@@ -260,15 +260,15 @@ def main():
         if len(prev_pred_roots) and args.reuse:
             prev_pred_roots.sort()
 
-        if not osp.exists(pred_root):
-            os.makedirs(pred_root, exist_ok=True)
-
         if use_config:
             model = build_model_from_config(cfg['model'], model_name, args.use_vllm)
 
         for _, dataset_name in enumerate(args.data):
             if WORLD_SIZE > 1:
                 dist.barrier()
+
+            pred_root = osp.join(pred_root_base, dataset_name)
+            os.makedirs(pred_root, exist_ok=True)
 
             try:
                 pred_format = get_pred_file_format()

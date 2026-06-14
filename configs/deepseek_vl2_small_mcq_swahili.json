@@ -1,0 +1,11 @@
+{
+    "model": {
+        "deepseek-vl2-small": {
+            "class": "DeepSeekVL2",
+            "model_path": "deepseek-ai/deepseek-vl2-small"
+        }
+    },
+    "data": {
+        "SWAHILI_FULL": { "class": "AfrimedQA", "dataset": "SWAHILI_FULL" }
+    }
+}

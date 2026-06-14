@@ -62,6 +62,9 @@ def build_messages(row: dict, target_lang: str) -> list[dict]:
 
 def parse_output(text: str) -> tuple[str, str]:
     """Extract translated question and answer from model output."""
+    # Strip thinking blocks (e.g. Qwen3 <think>...</think>) before parsing
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
     q_match = re.search(r'(?i)Question:\s*(.+?)(?=\nAnswer:|\Z)', text, re.DOTALL)
     a_match = re.search(r'(?i)Answer:\s*(.+?)$', text, re.DOTALL)
     hyp_q = q_match.group(1).strip() if q_match else ""
@@ -92,8 +95,14 @@ def run(config_path: str):
     model = build_model(cfg['model'])
     model_tag = cfg['model']['model_name'].replace('/', '_')
 
-    output_dir = Path(cfg.get('output_dir', 'outputs/mt_eval'))
+    lang_pair = f"{source_lang}_{target_lang}"
+    base_dir = Path(cfg.get('output_dir', 'outputs/mt_eval')) / model_tag / lang_pair
+    existing_runs = [d for d in base_dir.glob('run_*') if d.is_dir()]
+    run_nums = [int(d.name.split('_')[1]) for d in existing_runs if d.name.split('_')[1].isdigit()]
+    run_id = f"run_{max(run_nums) + 1 if run_nums else 1}"
+    output_dir = base_dir / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output dir: {output_dir}")
     stem = f"{source_lang}_{target_lang}_{model_tag}"
 
     is_seq2seq = isinstance(model, Seq2SeqModel)
@@ -108,6 +117,7 @@ def run(config_path: str):
             messages = build_messages(row, target_lang)
             raw_output = model.translate(messages)
             hyp_q, hyp_a = parse_output(raw_output)
+            #print(f"\n--- raw_output ---\n{raw_output}\n--- hyp_q ---\n{hyp_q}\n--- hyp_a ---\n{hyp_a}\n---")
 
         ref_q = str(row['question_tgt'])
         ref_a = str(row['answer_tgt'])

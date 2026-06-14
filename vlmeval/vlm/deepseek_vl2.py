@@ -20,8 +20,33 @@ class DeepSeekVL2(BaseModel):
                 'Please first install deepseek_vl2 from source codes in: https://github.com/deepseek-ai/DeepSeek-VL2')
             raise e
 
+    @staticmethod
+    def _apply_compat_patches():
+        """Compatibility patches for PyTorch/CUDA/transformers version mismatches."""
+        # xFormers CUDA extensions not built for current PyTorch — fall back to native SDPA.
+        # Patches xformers.ops so the local import in siglip_vit picks up the replacement.
+        try:
+            import xformers._C  # ImportError if CUDA extensions didn't build
+        except ImportError:
+            import torch.nn.functional as F
+            import xformers.ops
+
+            def _sdpa_fallback(q, k, v, attn_bias=None, p=0.0, **kwargs):
+                return F.scaled_dot_product_attention(
+                    q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), dropout_p=p
+                ).transpose(1, 2)
+
+            xformers.ops.memory_efficient_attention = _sdpa_fallback
+
+        # Older transformers GenerationConfig lacks cache_implementation — set class-level
+        # default so all sub-model instances (e.g. self.language) get it automatically.
+        from transformers import GenerationConfig
+        if not hasattr(GenerationConfig, 'cache_implementation'):
+            GenerationConfig.cache_implementation = None
+
     def __init__(self, model_path='deepseek-ai/deepseek-vl2-tiny', **kwargs):
         self.check_install()
+        self._apply_compat_patches()
         assert model_path is not None
         self.model_path = model_path
         from deepseek_vl2.models import DeepseekVLV2Processor, DeepseekVLV2ForCausalLM
