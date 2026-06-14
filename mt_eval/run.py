@@ -95,12 +95,8 @@ def run(config_path: str):
     model = build_model(cfg['model'])
     model_tag = cfg['model']['model_name'].replace('/', '_')
 
-    lang_pair = f"{source_lang}_{target_lang}"
-    base_dir = Path(cfg.get('output_dir', 'outputs/mt_eval')) / model_tag / lang_pair
-    existing_runs = [d for d in base_dir.glob('run_*') if d.is_dir()]
-    run_nums = [int(d.name.split('_')[1]) for d in existing_runs if d.name.split('_')[1].isdigit()]
-    run_id = f"run_{max(run_nums) + 1 if run_nums else 1}"
-    output_dir = base_dir / run_id
+    lang_pair = f"{source_lang}_{target_lang}".lower()
+    output_dir = Path(cfg.get('output_dir', 'outputs/mt_eval')) / model_tag / lang_pair
     output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output dir: {output_dir}")
     stem = f"{source_lang}_{target_lang}_{model_tag}"
