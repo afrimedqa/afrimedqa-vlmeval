@@ -1,0 +1,14 @@
+{
+    "model": {
+        "Claude_Opus47_AzureFoundry": {
+            "class": "AzureFoundryVLM",
+            "model": "claude-opus-4-7",
+            "temperature": 0,
+            "retry": 10,
+            "verbose": false
+        }
+    },
+    "data": {
+        "SWAHILI_FULL": { "class": "AfrimedQA", "dataset": "SWAHILI_FULL" }
+    }
+}

@@ -5,6 +5,8 @@ from .gemini_model import GeminiModel
 from .hf_model import HFModel
 from .seq2seq_model import Seq2SeqModel
 from .vllm_model import VLLMModel
+from .anthropic_foundry_model import AnthropicFoundryModel
+from .azure_openai_model import AzureOpenAIModel
 
 
 def _resolve_api_key(value: str) -> str:
@@ -16,10 +18,12 @@ def build_model(model_cfg: dict):
     """ dispatch to the correct model class based on config 'type'.
 
     Supported types:
-      - "vllm"    : HuggingFace model loaded in-process via vLLM Python API
-      - "openai"  : OpenAI API Endpoint
-      - "gemini"  : Google GenAI SDK (Gemini 2.0+)
-      - "seq2seq" : Encoder-decoder translation model (NLLB-200, MarianMT, etc.)
+      - "vllm"             : HuggingFace model loaded in-process via vLLM Python API
+      - "openai"           : OpenAI API Endpoint
+      - "gemini"           : Google GenAI SDK (Gemini 2.0+)
+      - "seq2seq"          : Encoder-decoder translation model (NLLB-200, MarianMT, etc.)
+      - "anthropic_foundry": Claude via Azure AI Foundry (Anthropic-native API)
+      - "azure_openai"     : GPT via Azure AI Foundry (Azure OpenAI deployment)
     """
     model_type = model_cfg.get('type', 'gemini')
 
@@ -67,6 +71,23 @@ def build_model(model_cfg: dict):
             device=model_cfg.get('device', None),
         )
 
+    if model_type == 'anthropic_foundry':
+        return AnthropicFoundryModel(
+            model_name=model_cfg['model_name'],
+            api_key=_resolve_api_key(model_cfg['api_key']),
+            max_tokens=model_cfg.get('max_tokens', 4096),
+            temperature=model_cfg.get('temperature', 0.0),
+        )
+
+    if model_type == 'azure_openai':
+        return AzureOpenAIModel(
+            model_name=model_cfg['model_name'],
+            api_key=_resolve_api_key(model_cfg['api_key']),
+            max_tokens=model_cfg.get('max_tokens', 4096),
+            temperature=model_cfg.get('temperature', 0.0),
+        )
+
     raise ValueError(
-        f"Unknown model type '{model_type}'. Choose from: vllm, hf, openai, gemini, seq2seq"
+        f"Unknown model type '{model_type}'. "
+        "Choose from: vllm, hf, openai, gemini, seq2seq, anthropic_foundry, azure_openai"
     )

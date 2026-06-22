@@ -1,0 +1,14 @@
+{
+    "model": {
+        "GPT5_AzureFoundry": {
+            "class": "AzureFoundryOpenAIWrapper",
+            "model": "gpt-5",
+            "temperature": 0,
+            "retry": 10,
+            "verbose": false
+        }
+    },
+    "data": {
+        "ARABIC_FULL": { "class": "AfrimedQA", "dataset": "ARABIC_FULL" }
+    }
+}

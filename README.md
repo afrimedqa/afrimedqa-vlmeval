@@ -131,6 +131,43 @@ All runs are driven by a JSON config with `model` and `data` blocks. Place confi
 | `gemini_flash_mcq_full_splits.json` | `gemini-3.5-flash` | API, requires `GEMINI_API_KEY` |
 | `gemini_flash_lite_mcq_full_splits.json` | `gemini-3.5-flash-lite` | API |
 | `gemini_pro_mcq_full_splits.json` | `gemini-3.5-pro` | API |
+| `claude_opus47_mcq_full_splits.json` | `claude-opus-4-7` | Azure AI Foundry, requires `AZURE_FOUNDRY_*` vars |
+| `claude_sonnet46_mcq_full_splits.json` | `claude-sonnet-4-6` | Azure AI Foundry, requires `AZURE_FOUNDRY_*` vars |
+| `gpt5_mcq_full_splits.json` | `gpt-5` | Azure AI Foundry, requires `AZURE_FOUNDRY_GPT5_*` vars |
+
+### Azure AI Foundry API models
+
+Claude and GPT-5 are accessed via Azure AI Foundry. The `AzureFoundryVLM` class (for Claude) and `AzureFoundryOpenAIWrapper` class (for GPT-5) are registered in `vlmeval/api/azure_foundry.py`.
+
+Deployment names are resolved at runtime from environment variables — they never appear in configs or code:
+
+```json
+{
+    "model": {
+        "Claude_Opus47_AzureFoundry": {
+            "class": "AzureFoundryVLM",
+            "model": "claude-opus-4-7",
+            "temperature": 0,
+            "retry": 10,
+            "verbose": false
+        }
+    },
+    "data": {
+        "SWAHILI_FULL": { "class": "AfrimedQA", "dataset": "SWAHILI_FULL" }
+    }
+}
+```
+
+Required `.env` entries:
+
+```bash
+AZURE_FOUNDRY_ENDPOINT=https://<resource>.services.ai.azure.com
+AZURE_FOUNDRY_API_KEY=<key>
+AZURE_FOUNDRY_CLAUDE_OPUS47_DEPLOYMENT=<deployment-name>
+AZURE_FOUNDRY_CLAUDE_SONNET46_DEPLOYMENT=<deployment-name>
+AZURE_FOUNDRY_GPT5_URL=https://<resource>.cognitiveservices.azure.com/openai/deployments/<deployment>/chat/completions?api-version=<version>
+AZURE_FOUNDRY_GPT5_API_KEY=<key>
+```
 
 ### Running evaluations
 
@@ -199,7 +236,7 @@ SAQ predictions are judged by an LLM on 5 axes adapted from the Med-PaLM 2 clini
 | `slurm/run_vlmeval_gpu2_deepseek_vl2.sh` | 2× A40 | DeepSeek-VL2 |
 | `slurm/run_vlmeval_gpu2_qwen3_vl.sh` | 2× A40 | Qwen3-VL-32B |
 | `slurm/run_vlmeval_gpu_gemma4.sh` | varies | Gemma4 |
-| `slurm/run_vlmeval_api.sh` | CPU | API models (Gemini, GPT) |
+| `slurm/run_vlmeval_api.sh` | CPU | API models (Gemini, GPT-5, Claude via Azure AI Foundry) |
 
 ```bash
 # Example: submit a 27B GPU job
@@ -245,7 +282,9 @@ python -m mt_eval.run mt_eval/configs/en_twi_vllm.json
 | `"gemini"` | Google GenAI SDK | `gemini-3.5-flash` |
 | `"hf"` | HuggingFace chat pipeline | `google/gemma-3-27b-it` |
 | `"seq2seq"` | HuggingFace seq2seq (NLLB) | `facebook/nllb-200-3.3B` |
-| `"chat"` | OpenAI-compatible chat API | any OpenAI-format endpoint |
+| `"openai"` | OpenAI-compatible chat API | any OpenAI-format endpoint |
+| `"anthropic_foundry"` | Claude via Azure AI Foundry (Anthropic-native API) | `claude-opus-4-7`, `claude-sonnet-4-6` |
+| `"azure_openai"` | GPT via Azure AI Foundry (Azure OpenAI deployment) | `gpt-5` |
 
 **vLLM config** (with repetition penalty for reasoning models):
 ```json
@@ -311,7 +350,34 @@ python -m mt_eval.run mt_eval/configs/en_twi_vllm.json
 
 Pre-built configs for all 14 language pairs × multiple models live in `mt_eval/configs/full_splits/`. Naming pattern: `en_{language}_{model}.json`.
 
-Models with full-splits configs: `gemma3_4b`, `gemma3_12b`, `gemma3_27b`, `gemma4_e4b`, `deepseek_r1_32b`, `deepseek_v4_flash`, `qwen3_6_27b`, `qwen3_vl_32b`, `medgemma_27b`, `gemini_flash`, `gemini_flash_lite`, `gemini` (pro).
+Models with full-splits configs: `gemma3_4b`, `gemma3_12b`, `gemma3_27b`, `gemma4_e4b`, `deepseek_r1_32b`, `deepseek_v4_flash`, `qwen3_6_27b`, `qwen3_vl_32b`, `medgemma_27b`, `gemini_flash`, `gemini_flash_lite`, `gemini` (pro), `claude_opus47`, `claude_sonnet46`, `gpt5`.
+
+**Azure AI Foundry MT config example** (`mt_eval/configs/full_splits/en_swahili_claude_opus47.json`):
+```json
+{
+    "data": {
+        "source_file": "full_splits/ENGLISH_FULL.tsv",
+        "target_file": "full_splits/SWAHILI_FULL.tsv",
+        "source_lang": "English",
+        "target_lang": "Swahili"
+    },
+    "model": {
+        "type": "anthropic_foundry",
+        "model_name": "claude-opus-4-7",
+        "api_key": "AZURE_FOUNDRY_API_KEY",
+        "max_tokens": 4096,
+        "temperature": 0.0
+    },
+    "output_dir": "outputs/mt_eval/full_splits"
+}
+```
+
+**Submitting all language pairs for a single Azure AI Foundry model:**
+```bash
+for lang in amharic arabic french hausa igbo isizulu portuguese sesotho swahili twi wolof xhosa yoruba; do
+    sbatch slurm/run_mt_eval_api.sh mt_eval/configs/full_splits/en_${lang}_claude_opus47.json
+done
+```
 
 ### MT Eval outputs
 
@@ -383,14 +449,15 @@ afrimedqa-vlmeval/
 │   │   └── full_splits/          # Per-language × per-model configs
 │   ├── datasets/                 # Parallel corpus loader
 │   ├── metrics/                  # ChrF + SSA-COMET scorers
-│   └── models/                   # vllm / gemini / hf / seq2seq / chat backends
+│   └── models/                   # vllm / gemini / hf / seq2seq / openai / anthropic_foundry / azure_openai backends
 ├── vlmeval/
 │   ├── dataset/
 │   │   ├── afrimedqa.py          # AfrimedQA — multimodal MCQ
 │   │   ├── afrimedqa_shortqa.py  # AfrimedShortQA — multimodal SAQ
 │   │   └── afrimedqa_text.py     # AfrimedTextQA — text-only MCQ
 │   ├── vlm/                      # VLM model classes (Gemma3, Qwen3VL, DeepSeekVL2, …)
-│   ├── api/                      # API model classes (Gemini, GPT4V, …)
+│   ├── api/                      # API model classes (Gemini, GPT4V, Claude, Azure Foundry …)
+│   │   └── azure_foundry.py      # AzureFoundryVLM (Claude) + AzureFoundryOpenAIWrapper (GPT-5)
 │   └── inference_mt.py           # Multi-turn inference dispatcher
 └── slurm/                        # SLURM submission scripts
     ├── run_vlmeval_gpu2.sh
@@ -409,5 +476,11 @@ afrimedqa-vlmeval/
 | `OPENAI_API_KEY` | VLM eval (judge) | OpenAI key for LLM judge / SAQ G-Eval |
 | `HF_HOME` | Both | HuggingFace model cache directory |
 | `VLLM_WORKER_MULTIPROC_METHOD` | Both | Set to `spawn` for vLLM multi-GPU |
+| `AZURE_FOUNDRY_ENDPOINT` | VLM eval + MT eval | Azure AI Foundry base URL for Claude |
+| `AZURE_FOUNDRY_API_KEY` | VLM eval + MT eval | Azure AI Foundry key for Claude |
+| `AZURE_FOUNDRY_CLAUDE_OPUS47_DEPLOYMENT` | VLM eval + MT eval | Deployment name for `claude-opus-4-7` |
+| `AZURE_FOUNDRY_CLAUDE_SONNET46_DEPLOYMENT` | VLM eval + MT eval | Deployment name for `claude-sonnet-4-6` |
+| `AZURE_FOUNDRY_GPT5_URL` | VLM eval + MT eval | Full Azure OpenAI deployment URL for GPT-5 (includes api-version) |
+| `AZURE_FOUNDRY_GPT5_API_KEY` | VLM eval + MT eval | Azure AI Foundry key for GPT-5 |
 
 Set API keys and paths in a `.env` file at the project root — the Slurm scripts source it automatically via `set -a; source .env; set +a`.

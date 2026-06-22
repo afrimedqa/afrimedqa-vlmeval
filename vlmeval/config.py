@@ -357,6 +357,31 @@ api_models = {
         retry=10,
         verbose=False,
     ),
+    # Claude via Azure AI Foundry (Serverless API / Models-as-a-Service)
+    # Requires AZURE_FOUNDRY_ENDPOINT and AZURE_FOUNDRY_API_KEY env vars
+    "Claude_Opus47_AzureFoundry": partial(
+        AzureFoundryVLM,
+        model="claude-opus-4-7",
+        temperature=0,
+        retry=10,
+        verbose=False,
+    ),
+    "Claude_Sonnet46_AzureFoundry": partial(
+        AzureFoundryVLM,
+        model="claude-sonnet-4-6",
+        temperature=0,
+        retry=10,
+        verbose=False,
+    ),
+    # GPT-5 via Azure AI Foundry (Azure OpenAI deployment)
+    # Requires AZURE_FOUNDRY_GPT5_URL and AZURE_FOUNDRY_GPT5_API_KEY env vars
+    "GPT5_AzureFoundry": partial(
+        AzureFoundryOpenAIWrapper,
+        model="gpt-5",
+        temperature=0,
+        retry=10,
+        verbose=False,
+    ),
     # GLM4V
     "GLM4V": partial(GLMVisionAPI, model="glm4v-biz-eval", temperature=0, retry=10),
     "GLM4V_PLUS": partial(GLMVisionAPI, model="glm-4v-plus", temperature=0, retry=10),

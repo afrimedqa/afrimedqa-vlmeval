@@ -1,0 +1,14 @@
+{
+    "model": {
+        "Claude_Sonnet46_AzureFoundry": {
+            "class": "AzureFoundryVLM",
+            "model": "claude-sonnet-4-6",
+            "temperature": 0,
+            "retry": 10,
+            "verbose": false
+        }
+    },
+    "data": {
+        "SWAHILI_FULL": { "class": "AfrimedQA", "dataset": "SWAHILI_FULL" }
+    }
+}
