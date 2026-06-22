@@ -139,7 +139,7 @@ All runs are driven by a JSON config with `model` and `data` blocks. Place confi
 
 Claude and GPT-5 are accessed via Azure AI Foundry. The `AzureFoundryVLM` class (for Claude) and `AzureFoundryOpenAIWrapper` class (for GPT-5) are registered in `vlmeval/api/azure_foundry.py`.
 
-Deployment names are resolved at runtime from environment variables — they never appear in configs or code:
+Deployment names are resolved at runtime from environment variables:
 
 ```json
 {
