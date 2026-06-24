@@ -67,4 +67,12 @@ class AnthropicFoundryModel(BaseMTModel):
             data=json.dumps(payload), timeout=120
         )
         response.raise_for_status()
-        return response.json()['content'][0]['text']
+        body = response.json()
+        content = body.get('content', [])
+        if not content:
+            raise RuntimeError(
+                f'AnthropicFoundry returned empty content. '
+                f'stop_reason={body.get("stop_reason")!r} '
+                f'full_response={body}'
+            )
+        return content[0]['text']

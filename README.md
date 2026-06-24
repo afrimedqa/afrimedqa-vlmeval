@@ -185,12 +185,6 @@ LMUData=full_splits python run.py --config configs/gemma_text_baseline.json \
     --work-dir outputs/vlmeval
 ```
 
-**SAQ with LLM judge:**
-```bash
-LMUData=test_files python run.py --config configs/afrimedsaq.json \
-    --judge gpt-4o --work-dir outputs/vlmeval
-```
-
 **Inference only (skip scoring):**
 ```bash
 LMUData=full_splits python run.py --config configs/medgemma_27b_mcq_full_splits.json \
@@ -202,6 +196,40 @@ LMUData=full_splits python run.py --config configs/medgemma_27b_mcq_full_splits.
 LMUData=full_splits python run.py --config configs/medgemma_27b_mcq_full_splits.json \
     --reuse --work-dir outputs/vlmeval
 ```
+
+### SAQ evaluation modes
+
+SAQ evaluation involves two distinct steps: **inference** (the model answers each question) and **judging** (an LLM scores each answer on 5 clinical axes). These can be run together in a single job or split into two separate jobs — useful when inference and judging use different compute resources, or when you want to re-judge existing predictions with a different judge model.
+
+There are three modes, controlled by the `--mode` flag:
+
+| Mode | What runs | When to use |
+|---|---|---|
+| *(default)* | Inference + LLM judge in one job | Quickest end-to-end path |
+| `infer` | Inference only — saves predictions, skips judge | When GPU inference and API judging should be separate jobs |
+| `eval` | LLM judge only — reads existing predictions | Re-judging with a different model, or resuming after a failed judge step |
+
+**Default — inference + judge in one job:**
+```bash
+LMUData=full_splits python run.py --config configs/afrimedsaq.json \
+    --judge gpt-4o --work-dir outputs/vlm_saq_evals
+```
+
+**Phase 1 — inference only (saves predictions, skips judge):**
+```bash
+LMUData=full_splits python run.py --config configs/afrimedsaq.json \
+    --mode infer --work-dir outputs/vlm_saq_evals
+```
+
+**Phase 2 — judge only (reads existing predictions, skips inference):**
+```bash
+LMUData=full_splits python run.py --config configs/afrimedsaq.json \
+    --mode eval --judge gpt-4o --reuse --work-dir outputs/vlm_saq_evals
+```
+
+> **Note:** `--reuse` is required in Phase 2. It tells the pipeline to locate the prediction file saved during Phase 1 rather than looking for a fresh one. Both phases must use the same `--work-dir`.
+
+SAQ outputs are written to `outputs/vlm_saq_evals/` (separate from MCQ outputs in `outputs/vlmeval/`).
 
 ### VLM Eval outputs
 

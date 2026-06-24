@@ -111,7 +111,11 @@ def run(config_path: str):
             raw_output = f"Question: {hyp_q}\nAnswer: {hyp_a}"
         else:
             messages = build_messages(row, target_lang)
-            raw_output = model.translate(messages)
+            try:
+                raw_output = model.translate(messages)
+            except RuntimeError as e:
+                print(f"WARNING: skipping sample {row['sample_id']} — {e}")
+                raw_output = ""
             hyp_q, hyp_a = parse_output(raw_output)
             #print(f"\n--- raw_output ---\n{raw_output}\n--- hyp_q ---\n{hyp_q}\n--- hyp_a ---\n{hyp_a}\n---")
 
