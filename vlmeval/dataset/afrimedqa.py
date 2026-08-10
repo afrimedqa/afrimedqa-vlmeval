@@ -42,9 +42,13 @@ class AfrimedQA(ImageMCQDataset):
     def build_prompt(self, line):
         # Get the default framework prompt
         msgs = super().build_prompt(line)
+        
+        target_language = line.get('language', 'English')
+        if isinstance(target_language, str):
+            target_language = target_language.capitalize()
 
         cot_clinical_constraints = (
-            "\n\nIn 1-2 sentences, briefly explain your clinical reasoning. "
+            f"\n\nIn a single short paragraph (3-4 sentences), briefly explain your clinical reasoning entirely in {target_language}. "
             "Then state your final answer on a new line in this exact format:\n"
             "Answer: <letter>\n"
             "where <letter> is exactly one of A, B, C, or D. Do not add anything after the answer line."
@@ -116,13 +120,15 @@ class AfrimedQA(ImageMCQDataset):
         def extract_rationale(text: str) -> str:
             text = str(text).strip()
             # Find where the answer line starts and take everything before it as the rationale
-            m = re.search(r'(?i)(final\s+answer|answer)\s*:\s*[A-E]', text)
+            m = re.search(r'(?i)(final\s+answer|answer\s*is|answer)\s*:?\s*\*?\*?[A-E]', text)
             if m:
                 rationale = text[:m.start()].strip()
                 # Strip an optional leading "Rationale:" label the model may add
                 rationale = re.sub(r'^(?i)rationale\s*:\s*', '', rationale).strip()
                 return rationale
-            return ""
+            # Fallback: if no answer marker is found, return the whole text as rationale
+            rationale = re.sub(r'^(?i)rationale\s*:\s*', '', text).strip()
+            return rationale
 
         def extract_choice(text):
 
@@ -132,17 +138,15 @@ class AfrimedQA(ImageMCQDataset):
             match = re.search(r'FINAL ANSWER:\s*\*?\*?([A-E])', text, re.IGNORECASE)
             if match: return match.group(1).upper()
 
+            match = re.search(r'answer is:?\s*\*?\*?([A-E])', text, re.IGNORECASE)
+            if match: return match.group(1).upper()
+
+            match = re.search(r'[Aa]nswer:\s*\*?\*?([A-E])', text)
+            if match: return match.group(1).upper()
+
 
             match = re.search(r'\*\*(A|B|C|D|E)(?:\.|\*\*)', text)
             if match: return match.group(1)
-
-
-            match = re.search(r'answer is:?\s*(A|B|C|D|E)', text, re.IGNORECASE)
-            if match: return match.group(1).upper()
-
-            match = re.search(r'[Aa]nswer:\s*([A-E])', text)
-            if match: return match.group(1).upper()
-
 
             match = re.search(r'\b(A|B|C|D|E)\.', text)
             if match: return match.group(1)
@@ -154,8 +158,8 @@ class AfrimedQA(ImageMCQDataset):
             match = re.match(r'^([A-E])\b', text, re.IGNORECASE)
             if match: return match.group(1).upper()
 
-            # Last resort: find the last standalone A-D in the text
-            match = re.search(r'\b([A-D])\b(?=[^A-D]*$)', text)
+            # Last resort: find the last standalone A-E in the text
+            match = re.search(r'\b([A-E])\b(?=[^A-E]*$)', text)
             if match: return match.group(1).upper()
 
             return "INVALID"

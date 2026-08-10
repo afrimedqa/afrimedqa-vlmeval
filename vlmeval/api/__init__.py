@@ -19,6 +19,8 @@ from .taichu import TaichuVLAPI, TaichuVLRAPI
 from .doubao_vl_api import DoubaoVL
 from .mug_u import MUGUAPI
 from .azure_foundry import AzureFoundryWrapper, AzureFoundryVLM, AzureFoundryOpenAIWrapper
+from .vertex_model_garden import VertexModelGardenAPI
+from .vertex_gemini import VertexGeminiWrapper, VertexGeminiAPI
 
 __all__ = [
     'OpenAIWrapper', 'HFChatModel', 'GeminiWrapper', 'GPT4V', 'Gemini',
@@ -28,4 +30,5 @@ __all__ = [
     'bailingMMAPI', 'TaiyiAPI', 'TeleMMAPI', 'SiliconFlowAPI', 'LMDeployAPI',
     'TaichuVLAPI', 'TaichuVLRAPI', 'DoubaoVL', 'MUGUAPI',
     'AzureFoundryWrapper', 'AzureFoundryVLM', 'AzureFoundryOpenAIWrapper',
+    'VertexModelGardenAPI', 'VertexGeminiWrapper', 'VertexGeminiAPI',
 ]

@@ -16,4 +16,3 @@ temp/
 test_files/
 train_files/
 vllm_debug.log
-.codex
