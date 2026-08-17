@@ -128,6 +128,15 @@ class ImageShortQADataset(ImageBaseDataset):
                         Comprehensive_auxeval, tups, nproc=nproc, chunksize=nproc, keys=indices, save=tmp_file)
                     for k, v in zip(indices, res):
                         ans_map[k] = v
+            else:
+                for i in range(len(data)):
+                    line = data.iloc[i]
+                    idx = line['index']
+                    if idx not in ans_map:
+                        gt = str(line['answer']).strip().lower()
+                        pred = str(line['prediction']).strip().lower()
+                        hit = int(gt == pred or gt in pred)
+                        ans_map[idx] = dict(hit=hit, log='exact_matching')
 
             judge_results = [ans_map[x] for x in data['index']]
             data['hit'] = [x['hit'] for x in judge_results]

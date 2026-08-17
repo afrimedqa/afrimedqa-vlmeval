@@ -48,9 +48,9 @@ from .vdc import VDC
 from .gobench import GOBenchDataset
 
 """ Import AfriMedQA dataset """
-from .afrimedqa import AfrimedQA
-from .afrimedqa_shortqa import AfrimedShortQA
-from .afrimedqa_text import AfrimedTextQA
+from .afrimedqa import AfrimedQA, AfrimedQA_Direct
+from .afrimedqa_shortqa import AfrimedShortQA, AfrimedShortQA_Direct, AfrimedShortQA_OneShot
+from .afrimedqa_text import AfrimedTextQA, AfrimedTextQA_Direct
 
 
 from .worldsense import WorldSense
@@ -192,7 +192,8 @@ IMAGE_DATASET = [
     CreationMMBenchDataset, ImageShortQADataset, MMAlignBench, OmniDocBench,
     VLM2Bench, VMCBenchDataset, EMMADataset, MME_CoT, MOAT, MedXpertQA_MM_test,
     LEGO, MMSci_Captioning, Physics_yale, ScreenSpot_Pro, ScreenSpot,
-    MMIFEval, Spatial457, VisuLogic, CVBench, PathVQA_VAL, AfrimedQA, AfrimedShortQA,
+    MMIFEval, Spatial457, VisuLogic, CVBench, PathVQA_VAL, AfrimedQA, AfrimedQA_Direct,
+    AfrimedShortQA, AfrimedShortQA_Direct, AfrimedShortQA_OneShot,
     PathVQA_TEST, TDBench, TDBenchGrounding, MicroBench, CharXiv, OmniMedVQA,
     WildDocBenchmark, MSEarthMCQ, OCR_Reasoning, PhyX, VLMBlind, CountBenchQA,
     ZEROBench, SCAM, Omni3DBench, TallyQA, _3DSRBench, AffordanceDataset, GOBenchDataset
@@ -211,7 +212,7 @@ VIDEO_DATASET = [
 ]
 
 TEXT_DATASET = [
-    TextMCQDataset, AfrimedTextQA
+    TextMCQDataset, AfrimedTextQA, AfrimedTextQA_Direct
 ]
 
 CUSTOM_DATASET = [

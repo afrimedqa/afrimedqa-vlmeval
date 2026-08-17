@@ -19,8 +19,25 @@ class AfrimedQA(ImageMCQDataset):
     def supported_datasets(cls):
         return ['AfrimedQA']
 
+    def __init__(self, dataset="AfrimedQA", use_thinking_tag=True, data_dir=None, data_file=None, **kwargs):
+        self.data_dir = data_dir
+        self.data_file = data_file
+        self.use_thinking_tag = use_thinking_tag
+        super().__init__(dataset=dataset, data_dir=data_dir, data_file=data_file, **kwargs)
+
     def load_data(self, dataset="AfrimedQA", **kwargs):
-        if (hasattr(self.__class__, "DATASET_URL")
+        data_dir = kwargs.get('data_dir', None)
+        data_file = kwargs.get('data_file', None)
+
+        if data_file and osp.exists(data_file):
+            data_path = data_file
+        elif data_dir and osp.exists(osp.join(data_dir, f"{dataset}.tsv")):
+            data_path = osp.join(data_dir, f"{dataset}.tsv")
+        elif osp.exists(dataset):
+            data_path = dataset
+        elif osp.exists(f"{dataset}.tsv"):
+            data_path = f"{dataset}.tsv"
+        elif (hasattr(self.__class__, "DATASET_URL")
             and dataset in self.__class__.DATASET_URL
             and osp.exists(self.__class__.DATASET_URL[dataset])):
             data_path = self.__class__.DATASET_URL[dataset]
@@ -40,6 +57,9 @@ class AfrimedQA(ImageMCQDataset):
     
 
     def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
         # Get the default framework prompt
         msgs = super().build_prompt(line)
         
@@ -47,12 +67,40 @@ class AfrimedQA(ImageMCQDataset):
         if isinstance(target_language, str):
             target_language = target_language.capitalize()
 
-        cot_clinical_constraints = (
-            f"\n\nIn a single short paragraph (3-4 sentences), briefly explain your clinical reasoning entirely in {target_language}. "
-            "Then state your final answer on a new line in this exact format:\n"
-            "Answer: <letter>\n"
-            "where <letter> is exactly one of A, B, C, or D. Do not add anything after the answer line."
-        )
+        if self.use_thinking_tag:
+            cot_clinical_constraints = (
+                "\n\nAs an expert clinician, select the correct option from the list of multiple choices for the clinical question. "
+                "First, use the <thinking> tag to reason through the case step-by-step and rule out incorrect options. "
+                "Then, provide a concise, high-yield clinical summary of your rationale in the <answer_reason> tag, as it will be reviewed by other physicians. "
+                "Finally, provide the single letter of the correct option in the <final_answer> tag.\n\n"
+                f"IMPORTANT: The clinical summary of rationale (<answer_reason>) MUST be written entirely in {target_language}. "
+                "Do NOT include any medical disclaimers or AI caveats.\n\n"
+                "Strictly format your output using the following XML tags in this exact order:\n"
+                "<thinking>\n"
+                "Your internal step-by-step differential diagnosis and distractor elimination here (language does not matter).\n"
+                "</thinking>\n"
+                "<answer_reason>\n"
+                "Your concise, expert-level clinical summary here.\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "ONLY the single letter of the correct option (e.g., A, B, C, or D).\n"
+                "</final_answer>"
+            )
+        else:
+            cot_clinical_constraints = (
+                "\n\nAs an expert clinician, select the correct option from the list of multiple choices for the clinical question. "
+                "Provide a concise, high-yield clinical summary of your rationale in the <answer_reason> tag, as it will be reviewed by other physicians. "
+                "Then, provide the single letter of the correct option in the <final_answer> tag.\n\n"
+                f"IMPORTANT: The clinical summary of rationale (<answer_reason>) MUST be written entirely in {target_language}. "
+                "Do NOT include any medical disclaimers or AI caveats.\n\n"
+                "Strictly format your output using the following XML tags in this exact order:\n"
+                "<answer_reason>\n"
+                "Your concise, expert-level clinical summary here.\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "ONLY the single letter of the correct option (e.g., A, B, C, or D).\n"
+                "</final_answer>"
+            )
 
         for msg in msgs:
             if msg['type'] == 'text':
@@ -117,23 +165,45 @@ class AfrimedQA(ImageMCQDataset):
         if 'index' not in data.columns:
             data.reset_index(inplace=True)
 
+        def extract_thinking(text: str) -> str:
+            text = str(text).strip()
+            m = re.search(r'<thinking>\s*(.*?)\s*</thinking>', text, re.DOTALL | re.IGNORECASE)
+            return m.group(1).strip() if m else ""
+
         def extract_rationale(text: str) -> str:
             text = str(text).strip()
-            # Find where the answer line starts and take everything before it as the rationale
+            # 1. Match XML tag <answer_reason>...</answer_reason>
+            m_xml = re.search(r'<answer_reason>\s*(.*?)\s*</answer_reason>', text, re.DOTALL | re.IGNORECASE)
+            if m_xml:
+                return m_xml.group(1).strip()
+            # 2. If explicit ANSWER REASON tag exists
+            m_reason = re.search(r'(?i)answer\s+reason\s*:\s*(.*?)(?:final\s+answer|answer\s*:|$)', text, re.DOTALL)
+            if m_reason:
+                return m_reason.group(1).strip()
+            # 3. Find where the answer line starts and take everything before it as the rationale
             m = re.search(r'(?i)(final\s+answer|answer\s*is|answer)\s*:?\s*\*?\*?[A-E]', text)
             if m:
                 rationale = text[:m.start()].strip()
-                # Strip an optional leading "Rationale:" label the model may add
-                rationale = re.sub(r'^(?i)rationale\s*:\s*', '', rationale).strip()
+                rationale = re.sub(r'^(?i)(rationale|answer\s+reason)\s*:\s*', '', rationale).strip()
                 return rationale
             # Fallback: if no answer marker is found, return the whole text as rationale
-            rationale = re.sub(r'^(?i)rationale\s*:\s*', '', text).strip()
+            rationale = re.sub(r'^(?i)(rationale|answer\s+reason)\s*:\s*', '', text).strip()
             return rationale
 
         def extract_choice(text):
-
             text = str(text).strip()
 
+            # 1. Match inside XML tag <final_answer>...</final_answer>
+            m_xml = re.search(r'<final_answer>\s*(.*?)\s*</final_answer>', text, re.DOTALL | re.IGNORECASE)
+            if m_xml:
+                inner = m_xml.group(1).strip()
+                m_letter = re.search(r'\b([A-E])\b', inner, re.IGNORECASE)
+                if m_letter:
+                    return m_letter.group(1).upper()
+
+            # 2. Tag without closing or formatted inline
+            match = re.search(r'<final_answer>\s*\*?\*?([A-E])\b', text, re.IGNORECASE)
+            if match: return match.group(1).upper()
 
             match = re.search(r'FINAL ANSWER:\s*\*?\*?([A-E])', text, re.IGNORECASE)
             if match: return match.group(1).upper()
@@ -144,13 +214,11 @@ class AfrimedQA(ImageMCQDataset):
             match = re.search(r'[Aa]nswer:\s*\*?\*?([A-E])', text)
             if match: return match.group(1).upper()
 
-
             match = re.search(r'\*\*(A|B|C|D|E)(?:\.|\*\*)', text)
             if match: return match.group(1)
 
             match = re.search(r'\b(A|B|C|D|E)\.', text)
             if match: return match.group(1)
-
 
             if text.upper() in ['A', 'B', 'C', 'D', 'E']:
                 return text.upper()
@@ -164,11 +232,15 @@ class AfrimedQA(ImageMCQDataset):
 
             return "INVALID"
 
-        # Extract rationale before overwriting prediction with the letter
-        data['answer_rationale'] = data['prediction'].apply(extract_rationale)
+        # Save raw prediction, parsed thinking, parsed rationale/reason, and letter prediction
+        data['parsed_thinking'] = data['prediction'].apply(extract_thinking)
+        data['parsed_reason'] = data['prediction'].apply(extract_rationale)
+        data['answer_rationale'] = data['parsed_reason']
+        data['raw_prediction'] = data['prediction']
 
         # Apply our custom regex to clean the predictions
         data['prediction'] = data['prediction'].apply(extract_choice)
+        data['parsed_prediction'] = data['prediction']
 
         # Lowercase keys for consistency
         for k in list(data.keys()):
@@ -247,3 +319,12 @@ class AfrimedQA(ImageMCQDataset):
         dump(score_all, score_file)
 
         return acc
+
+
+class AfrimedQA_Direct(AfrimedQA):
+    @classmethod
+    def supported_datasets(cls):
+        return ['AfrimedQA_Direct']
+
+    def __init__(self, dataset="AfrimedQA_Direct", use_thinking_tag=False, data_dir=None, data_file=None, **kwargs):
+        super().__init__(dataset=dataset, use_thinking_tag=use_thinking_tag, data_dir=data_dir, data_file=data_file, **kwargs)

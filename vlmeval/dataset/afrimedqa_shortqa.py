@@ -1,5 +1,8 @@
 import os
 import os.path as osp
+import re
+import string
+import json
 import pandas as pd
 from tqdm import tqdm
 from vlmeval.dataset.image_shortqa import ImageShortQADataset
@@ -46,8 +49,26 @@ class AfrimedShortQA(ImageShortQADataset):
     def supported_datasets(cls):
         return ['AfrimedShortQA']
 
+    def __init__(self, dataset="AfrimedShortQA", use_thinking_tag=True, one_shot=False, data_dir=None, data_file=None, **kwargs):
+        self.data_dir = data_dir
+        self.data_file = data_file
+        self.use_thinking_tag = use_thinking_tag
+        self.one_shot = one_shot
+        super().__init__(dataset=dataset, data_dir=data_dir, data_file=data_file, **kwargs)
+
     def load_data(self, dataset="AfrimedShortQA", **kwargs):
-        if (hasattr(self.__class__, "DATASET_URL") 
+        data_dir = kwargs.get('data_dir', None)
+        data_file = kwargs.get('data_file', None)
+
+        if data_file and osp.exists(data_file):
+            data_path = data_file
+        elif data_dir and osp.exists(osp.join(data_dir, f"{dataset}.tsv")):
+            data_path = osp.join(data_dir, f"{dataset}.tsv")
+        elif osp.exists(dataset):
+            data_path = dataset
+        elif osp.exists(f"{dataset}.tsv"):
+            data_path = f"{dataset}.tsv"
+        elif (hasattr(self.__class__, "DATASET_URL") 
             and dataset in self.__class__.DATASET_URL 
             and osp.exists(self.__class__.DATASET_URL[dataset])):
             data_path = self.__class__.DATASET_URL[dataset]
@@ -70,27 +91,85 @@ class AfrimedShortQA(ImageShortQADataset):
     
 
     def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
         msgs = super().build_prompt(line)
         
         target_language = line.get('language', 'English')
         if isinstance(target_language, str):
             target_language = target_language.capitalize()
             
-        # constrained prompt to tell model how exactly to format its answers
-        cot_clinical_constraints = (
-            "\nAct as an expert clinical AI. "
-            "First, reason through the clinical presentation or question concisely (keep your reasoning to a single short paragraph of 3-4 sentences). "
-            "Then, provide your final answer separated by the exact phrase 'FINAL ANSWER:'. "
-            f"IMPORTANT: You must provide your reasoning and final answer entirely in {target_language}. "
-            "If a single diagnosis is requested, output only the medical term after the phrase. "
-            "If asked to list multiple items, provide a comma-separated list after the phrase. "
-            "Do NOT include medical disclaimers."
-        )
-        msgs[-1]['value'] += cot_clinical_constraints
+        # Prompt Mode 1: With Thinking Tag
+        if self.use_thinking_tag:
+            cot_clinical_constraints = (
+                "\n\nAs an expert clinician, answer the following short-answer clinical question. "
+                "First, use the <thinking> tag to reason through the case step-by-step. "
+                "Then, provide a concise, high-yield clinical summary of your rationale, as it will be reviewed by other physicians. "
+                "Finally, provide your exact answer.\n\n"
+                f"IMPORTANT: The clinical summary AND the final answer MUST be written entirely in {target_language}. "
+                "Do NOT include any medical disclaimers or AI caveats.\n\n"
+                "Strictly format your output using the following XML tags in this exact order:\n"
+                "<thinking>\n"
+                "Your internal step-by-step reasoning here (language does not matter).\n"
+                "</thinking>\n"
+                "<answer_reason>\n"
+                "Your concise, expert-level clinical summary here.\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "If a single diagnosis/step is requested, output ONLY the exact medical term. "
+                "If asked to list multiple items, output ONLY a comma-separated list. Do not write full sentences here.\n"
+                "</final_answer>"
+            )
+        # Prompt Mode 2: One-Shot (No Thinking with Example)
+        elif self.one_shot:
+            cot_clinical_constraints = (
+                "\n\nAs an expert clinician, answer the following short-answer clinical question. "
+                "Provide a concise, high-yield clinical summary of your rationale in the <answer_reason> tag, as it will be reviewed by other physicians. "
+                "Then, provide your exact answer in the <final_answer> tag.\n\n"
+                f"IMPORTANT: The clinical summary AND the final answer MUST be written entirely in {target_language}. "
+                "Do NOT include any medical disclaimers or AI caveats.\n\n"
+                "Strictly format your output using the following XML tags in this exact order:\n"
+                "<answer_reason>\n"
+                "Your concise, expert-level clinical summary here.\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "If a single diagnosis/step is requested, output ONLY the exact medical term. "
+                "If asked to list multiple items, output ONLY a comma-separated list. Do not write full sentences here.\n"
+                "</final_answer>\n\n"
+                "Example of the expected response format:\n"
+                "<answer_reason>\n"
+                "የታካሚው ሁኔታ ማህፀን ከእርግዝና ዕድሜው በላይ መሆኑን (14 ሳምንት vs 9 ሳምንት)፣ በጣም ከፍተኛ የሆነ የቤታ-ኤችጂ ደረጃን (140,965 mu/ml)፣ እና በሁለቱም በኩል የአድኔክሳ እብጠቶችን (theca lutein cysts) ያሳያል። የትራንስ ቫጂናል ሶኖግራፊው \"የበረዶ ዝናብ\" (snowstorm) ወይም የፍራፍሬ ቡንዲሳ አቀማመጥን ያሳያል፣ ይህም ለሙሉ ሃይዳቲድ ሞል (Complete Hydatidiform Mole) ባህሪያዊ ነው። የልብ ምት መጨመር እና ማቅለሽለሽ ከብልት ደም መፍሰስ ጋር የተያያዙ ምልክቶች ናቸው።\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "ሙሉ ሃይዳቲድ ሞል (Complete Hydatidiform Mole)\n"
+                "</final_answer>"
+            )
+        # Prompt Mode 3: Zero-Shot No Thinking (Clean prompt without example)
+        else:
+            cot_clinical_constraints = (
+                "\n\nAs an expert clinician, answer the following short-answer clinical question. "
+                "Provide a concise, high-yield clinical summary of your rationale in the <answer_reason> tag, as it will be reviewed by other physicians. "
+                "Then, provide your exact answer in the <final_answer> tag.\n\n"
+                f"IMPORTANT: The clinical summary AND the final answer MUST be written entirely in {target_language}. "
+                "Do NOT include any medical disclaimers or AI caveats.\n\n"
+                "Strictly format your output using the following XML tags in this exact order:\n"
+                "<answer_reason>\n"
+                "Your concise, expert-level clinical summary here.\n"
+                "</answer_reason>\n"
+                "<final_answer>\n"
+                "If a single diagnosis/step is requested, output ONLY the exact medical term. "
+                "If asked to list multiple items, output ONLY a comma-separated list. Do not write full sentences here.\n"
+                "</final_answer>"
+            )
+
+        for msg in msgs:
+            if msg['type'] == 'text':
+                msg['value'] += cot_clinical_constraints
+                break
                 
         return msgs
 
-    
     def evaluate(self, eval_file, **judge_kwargs):
         logger = get_logger('Evaluation')
         logger.info("Starting evaluation for Afrimed ShortQA...")
@@ -111,16 +190,43 @@ class AfrimedShortQA(ImageShortQADataset):
 
         raw_predictions = [str(x).strip() for x in data['prediction']]
         parsed_predictions = []
+        parsed_reasons = []
+        parsed_thinkings = []
         
         for pred in raw_predictions:
-            if "FINAL ANSWER:" in pred:
+            # Extract thinking
+            m_thinking = re.search(r'<thinking>\s*(.*?)\s*</thinking>', pred, re.DOTALL | re.IGNORECASE)
+            parsed_thinkings.append(m_thinking.group(1).strip() if m_thinking else "")
+
+            # Extract reasoning
+            m_xml_reason = re.search(r'<answer_reason>\s*(.*?)\s*</answer_reason>', pred, re.DOTALL | re.IGNORECASE)
+            if m_xml_reason:
+                parsed_reasons.append(m_xml_reason.group(1).strip())
+            else:
+                m_reason = re.search(r'(?i)answer\s+reason\s*:\s*(.*?)(?:final\s+answer|$)', pred, re.DOTALL)
+                if m_reason:
+                    parsed_reasons.append(m_reason.group(1).strip())
+                elif "FINAL ANSWER:" in pred:
+                    parsed_reasons.append(pred.split("FINAL ANSWER:")[0].replace("ANSWER REASON:", "").strip())
+                elif "Final Answer:" in pred:
+                    parsed_reasons.append(pred.split("Final Answer:")[0].replace("Answer Reason:", "").strip())
+                else:
+                    parsed_reasons.append("")
+
+            # Extract final answer
+            m_xml_ans = re.search(r'<final_answer>\s*(.*?)\s*</final_answer>', pred, re.DOTALL | re.IGNORECASE)
+            if m_xml_ans:
+                parsed_predictions.append(m_xml_ans.group(1).strip())
+            elif "FINAL ANSWER:" in pred:
                 parsed_predictions.append(pred.split("FINAL ANSWER:")[-1].strip())
             elif "Final Answer:" in pred:
                 parsed_predictions.append(pred.split("Final Answer:")[-1].strip())
             else:
                 parsed_predictions.append(pred) # Fallback
                 
-        # Save parsed predictions to the dataframe for your records
+        # Save parsed predictions, thinkings, and reasons to the dataframe for your records
+        data['parsed_thinking'] = parsed_thinkings
+        data['parsed_reason'] = parsed_reasons
         data['parsed_prediction'] = parsed_predictions 
         
         # Feed the CLEANED predictions to the metrics
@@ -355,3 +461,21 @@ class AfrimedShortQA(ImageShortQADataset):
         pd.DataFrame([results]).to_csv(eval_file.replace('.xlsx', '_metrics.csv'), index=False)
         
         return results
+
+
+class AfrimedShortQA_Direct(AfrimedShortQA):
+    @classmethod
+    def supported_datasets(cls):
+        return ['AfrimedShortQA_Direct']
+
+    def __init__(self, dataset="AfrimedShortQA_Direct", use_thinking_tag=False, one_shot=False, data_dir=None, data_file=None, **kwargs):
+        super().__init__(dataset=dataset, use_thinking_tag=use_thinking_tag, one_shot=one_shot, data_dir=data_dir, data_file=data_file, **kwargs)
+
+
+class AfrimedShortQA_OneShot(AfrimedShortQA):
+    @classmethod
+    def supported_datasets(cls):
+        return ['AfrimedShortQA_OneShot']
+
+    def __init__(self, dataset="AfrimedShortQA_OneShot", use_thinking_tag=False, one_shot=True, data_dir=None, data_file=None, **kwargs):
+        super().__init__(dataset=dataset, use_thinking_tag=use_thinking_tag, one_shot=one_shot, data_dir=data_dir, data_file=data_file, **kwargs)
