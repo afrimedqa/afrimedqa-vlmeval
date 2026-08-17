@@ -19,8 +19,18 @@ from .taichu import TaichuVLAPI, TaichuVLRAPI
 from .doubao_vl_api import DoubaoVL
 from .mug_u import MUGUAPI
 from .azure_foundry import AzureFoundryWrapper, AzureFoundryVLM, AzureFoundryOpenAIWrapper
-from .vertex_model_garden import VertexModelGardenAPI
-from .vertex_gemini import VertexGeminiWrapper, VertexGeminiAPI
+
+# vertex_model_garden.py / vertex_gemini.py were referenced by a prior commit but never
+# committed to the repo; degrade gracefully instead of breaking every import of vlmeval.api.
+try:
+    from .vertex_model_garden import VertexModelGardenAPI
+except ImportError:
+    VertexModelGardenAPI = None
+try:
+    from .vertex_gemini import VertexGeminiWrapper, VertexGeminiAPI
+except ImportError:
+    VertexGeminiWrapper = None
+    VertexGeminiAPI = None
 
 __all__ = [
     'OpenAIWrapper', 'HFChatModel', 'GeminiWrapper', 'GPT4V', 'Gemini',

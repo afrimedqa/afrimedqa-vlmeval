@@ -20,10 +20,22 @@ try:
     from deepeval.models.base_model import DeepEvalBaseLLM
 except ImportError:
     from deepeval.models import DeepEvalBaseLLM
-from vlmeval.api.vertex_gemini import VertexGeminiAPI
+
+# vertex_gemini.py was referenced by a prior commit but never committed to the repo;
+# degrade gracefully so importing this module doesn't break every AfrimedShortQA run.
+try:
+    from vlmeval.api.vertex_gemini import VertexGeminiAPI
+except ImportError:
+    VertexGeminiAPI = None
 
 class DeepEvalVertexGemini(DeepEvalBaseLLM):
     def __init__(self, model_name="gemini-3.1-pro-preview"):
+        if VertexGeminiAPI is None:
+            raise RuntimeError(
+                "DeepEvalVertexGemini requires vlmeval/api/vertex_gemini.py, which is not "
+                "present in this repo. Pass an explicit --judge (e.g. gpt-4o) instead of "
+                "relying on the default judge."
+            )
         self.model_name = model_name
         self.api = VertexGeminiAPI(model=model_name)
 
